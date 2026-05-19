@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#2d4fa1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <title>ClassTimes</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ClassTimes">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: #eaeef4;
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #1b2533;
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════
+       HEADER — azul
+    ══════════════════════════════════ */
+    .header {
+      background: #2d4fa1;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 16px 14px 14px;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 400;
+      height: 56px;
+    }
+    .btn-back {
+      background: none; border: none; color: #fff;
+      cursor: pointer; display: flex; align-items: center; padding: 0;
+      flex-shrink: 0;
+    }
+    .header-title {
+      font-size: 1.18rem; font-weight: 500; color: #fff; letter-spacing: 0.1px;
+    }
+
+    /* ══════════════════════════════════
+       WEEK STRIP — fondo BLANCO
+    ══════════════════════════════════ */
+    .week-strip {
+      background: #fff;
+      position: sticky;
+      top: 56px;
+      z-index: 399;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      padding: 6px 0 0;
+    }
+    .day-cell {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2px 1px 4px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent; user-select: none;
+    }
+    .dc-name {
+      font-size: 0.65rem; font-weight: 400;
+      color: #8c9baa; letter-spacing: 0.3px; margin-bottom: 4px;
+    }
+    .dc-circle {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; margin-bottom: 4px;
+    }
+    .dc-circle.selected { background: #3d8fd1; }
+    .dc-num { font-size: 1.05rem; font-weight: 400; color: #3a4a5c; line-height: 1; }
+    .dc-circle.selected .dc-num { color: #fff; font-weight: 700; }
+    .dc-num.is-today { color: #3d8fd1; }
+    .dc-dot { width: 5px; height: 5px; border-radius: 50%; background: #3d8fd1; }
+    .dc-dot.hidden { visibility: hidden; }
+
+    /* pill handle — clickable/draggable para abrir calendario */
+    .week-pill {
+      display: flex; justify-content: center;
+      padding: 6px 0 8px; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .week-pill-bar {
+      width: 32px; height: 3px; border-radius: 3px; background: #d1dae4;
+      transition: background 0.15s;
+    }
+    .week-pill:active .week-pill-bar { background: #3d8fd1; }
+
+    /* ══════════════════════════════════
+       SCHEDULE
+    ══════════════════════════════════ */
+    .schedule-container { padding: 0 10px 80px; }
+    .week-section { scroll-margin-top: 130px; }
+    .day-row {
+      display: flex; align-items: flex-start;
+      padding: 14px 2px 4px; gap: 10px;
+      scroll-margin-top: 130px;
+    }
+    .day-label {
+      min-width: 46px; text-align: center; flex-shrink: 0; padding-top: 1px;
+    }
+    .dl-num { font-size: 2rem; font-weight: 300; color: #a5b3bf; line-height: 1; }
+    .dl-num.today { color: #3d8fd1; }
+    .dl-abbr { font-size: 0.72rem; font-weight: 400; color: #a5b3bf; margin-top: 1px; }
+    .dl-abbr.today { color: #3d8fd1; }
+    .day-cards { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .day-empty-line {
+      flex: 1; height: 1px; background: #cad3dc; align-self: center; margin-top: 6px;
+    }
+    .class-card {
+      background: #fff; border-radius: 12px; padding: 13px 15px 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03);
+    }
+    .cc-time { font-size: 0.93rem; font-weight: 700; color: #111c2b; margin-bottom: 2px; }
+    .cc-course { font-size: 0.93rem; font-weight: 700; color: #111c2b; margin-bottom: 6px; line-height: 1.25; }
+    .cc-teacher { font-size: 0.8rem; font-weight: 400; color: #6b7f93; margin-bottom: 2px; }
+    .cc-location { font-size: 0.78rem; font-weight: 400; color: #6b7f93; }
+
+    /* ══════════════════════════════════
+       CALENDARIO OVERLAY (idéntico al original)
+    ══════════════════════════════════ */
+    .cal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      max-width: 430px;
+      margin: 0 auto;
+      background: #fff;
+      z-index: 500;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      transform: translateY(-100%);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+    .cal-overlay.open {
+      transform: translateY(0);
+      pointer-events: all;
+    }
+    .cal-header {
+      background: #2d4fa1;
+      height: 56px;
+      display: flex; align-items: center;
+      padding: 0 14px; gap: 14px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    /* pill para cerrar el calendario */
+    .cal-close-pill {
+      display: flex; justify-content: center;
+      padding: 8px 0 6px; cursor: pointer;
+      background: #fff;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cal-close-bar {
+      width: 32px; height: 3px; border-radius: 3px; background: #d1dae4;
+    }
+    .cal-content { padding: 0 8px 40px; background: #fff; }
+
+    /* mes */
+    .cal-month { margin-bottom: 8px; }
+    .cal-month-title {
+      text-align: center;
+      font-size: 1rem; font-weight: 400;
+      color: #1b2533;
+      padding: 20px 0 10px;
+    }
+    .cal-weeknames {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      margin-bottom: 2px;
+    }
+    .cal-wname {
+      text-align: center; font-size: 0.7rem; color: #8c9baa;
+      padding: 2px 0 4px;
+    }
+    .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-day {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 3px 0; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cal-day-circle {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 3px;
+    }
+    .cal-day-circle.cal-selected { background: #3d8fd1; }
+    .cal-day-num {
+      font-size: 0.95rem; font-weight: 400; color: #3a4a5c; line-height: 1;
+    }
+    .cal-day-num.cal-outside { color: #c8d4de; }
+    .cal-day-num.cal-today-text { color: #3d8fd1; }
+    .cal-day-circle.cal-selected .cal-day-num { color: #fff; font-weight: 700; }
+    .cal-dot { width: 5px; height: 5px; border-radius: 50%; background: #3d8fd1; }
+    .cal-dot.cal-outside-dot { background: #b8d4ea; }
+    .cal-dot.hidden { visibility: hidden; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER principal -->
+<header class="header" id="mainHeader">
+  <button class="btn-back" aria-label="Volver">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+         stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+  <span class="header-title">ClassTimes</span>
+</header>
+
+<!-- WEEK STRIP -->
+<div class="week-strip" id="weekStrip">
+  <div class="week-grid" id="weekGrid"></div>
+  <div class="week-pill" id="weekPill">
+    <div class="week-pill-bar"></div>
+  </div>
+</div>
+
+<!-- SCHEDULE -->
+<div class="schedule-container" id="scheduleContainer"></div>
+
+<!-- CALENDARIO OVERLAY -->
+<div class="cal-overlay" id="calOverlay">
+  <header class="cal-header">
+    <button class="btn-back" aria-label="Cerrar" onclick="closeCalendar()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+           stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <span class="header-title">ClassTimes</span>
+  </header>
+  <div class="cal-close-pill" onclick="closeCalendar()">
+    <div class="cal-close-bar"></div>
+  </div>
+  <div class="cal-content" id="calContent"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATOS CLASES — por getDay() JS (0=Dom…6=Sab)
+═══════════════════════════════════════════ */
+const WEEKLY = {
+  0: [],
+  1: [
+    { time:'7:45 AM - 10:00 AM',  course:'ARTIF INTEL WITH MACH LEAR JAV',
+      teacher:'UTOS CERAS, LUIS ALBERTO',        location:'CFP RIO NEGRO-PRINCIPAL 2 34-P2 - 108' },
+    { time:'10:15 AM - 12:30 PM', course:'ARTIF INTEL WITH MACH LEAR JAV',
+      teacher:'UTOS CERAS, LUIS ALBERTO',        location:'CFP RIO NEGRO-PRINCIPAL 2 34-P2 - 108' },
+    { time:'3:30 PM - 6:30 PM',   course:'ARTIF INTEL WITH MACH LEAR JAV',
+      teacher:'UTOS CERAS, LUIS ALBERTO',        location:'CFP RIO NEGRO-PRINCIPAL 2 34-P2 - 108' }
+  ],
+  2: [
+    { time:'8:00 AM - 1:00 PM',   course:'FORMACIÓN PRÁCTICA EN EMP I',
+      teacher:'DOCENTE NO ASIGNADO,',            location:'ENTORNO VIRTUAL SV-EV - N/A' },
+    { time:'2:00 PM - 5:00 PM',   course:'SEMINARIO COMPLEMENT PRÁCT I',
+      teacher:'UTOS CERAS, LUIS ALBERTO',        location:'CFP RIO NEGRO-PRINCIPAL 2 34-P2 - 108' },
+    { time:'10:00 PM - 11:00 PM', course:'REV Y CALIF CUADERNOS INFORME',
+      teacher:'UTOS CERAS, LUIS ALBERTO',        location:'ENTORNO VIRTUAL SV-EV - N/A' }
+  ],
+  3: [
+    { time:'8:00 AM - 1:00 PM',   course:'FORMACIÓN PRÁCTICA EN EMP I',
+      teacher:'DOCENTE NO ASIGNADO,',            location:'ENTORNO VIRTUAL SV-EV - N/A' },
+    { time:'2:00 PM - 5:00 PM',   course:'SEMINARIO COMPLEMENT PRÁCT I',
+      teacher:'UTOS CERAS, LUIS ALBERTO',        location:'CFP RIO NEGRO-PRINCIPAL 2 34-P2 - 108' },
+    { time:'6:31 PM - 7:59 PM',   course:'DESARROLLO HUMANO',
+      teacher:'BALTAZAR VASQUEZ, NICANOR FELIX', location:'CFP RIO NEGRO-PRINCIPAL 2 34-P2 - 205' }
+  ],
+  4: [
+    { time:'8:00 AM - 1:00 PM',   course:'FORMACIÓN PRÁCTICA EN EMP I',
+      teacher:'DOCENTE NO ASIGNADO,',            location:'ENTORNO VIRTUAL SV-EV - N/A' }
+  ],
+  5: [
+    { time:'8:00 AM - 1:00 PM',   course:'FORMACIÓN PRÁCTICA EN EMP I',
+      teacher:'DOCENTE NO ASIGNADO,',            location:'ENTORNO VIRTUAL SV-EV - N/A' }
+  ],
+  6: []
+};
+
+const DAY_NAMES   = ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'];
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                     'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const HAS_DOT     = new Set([1,2,3,4,5]); // Lun-Vie tienen punto
+
+/* ═══════════════════════════════════════════
+   FECHA REAL
+═══════════════════════════════════════════ */
+const NOW   = new Date();
+const TODAY = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
+
+/* Fecha actualmente seleccionada (comienza en hoy) */
+let calSelected = new Date(TODAY);
+
+/* ═══════════════════════════════════════════
+   GENERAR SEMANAS Dom→Sab
+═══════════════════════════════════════════ */
+function getSunday(d) {
+  const s = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  s.setDate(s.getDate() - s.getDay());
+  return s;
+}
+
+const FIRST_SUN   = getSunday(new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - 28));
+const TOTAL_WEEKS = 24;
+
+const WEEKS = Array.from({ length: TOTAL_WEEKS }, (_, w) => {
+  const sun = new Date(FIRST_SUN);
+  sun.setDate(FIRST_SUN.getDate() + w * 7);
+  return Array.from({ length: 7 }, (_, d) => {
+    const dt = new Date(sun);
+    dt.setDate(sun.getDate() + d);
+    return dt;
+  });
+});
+
+/* Índice de semana actual */
+const CUR_WEEK = WEEKS.findIndex(days =>
+  days.some(dt => dt.toDateString() === TODAY.toDateString())
+);
+
+/* Día seleccionado por semana (di = posición 0-6 dentro de la semana)
+   Para la semana actual: siempre el día de hoy.
+   Para otras semanas: primer día con clases. */
+const selDi = WEEKS.map((days, wi) => {
+  const ti = days.findIndex(dt => dt.toDateString() === TODAY.toDateString());
+  if (ti !== -1) return ti; // hoy está en esta semana
+  // primer día con clases (Lun=di1)
+  return days.findIndex(dt => WEEKLY[dt.getDay()]?.length > 0) ?? 1;
+});
+
+/* ═══════════════════════════════════════════
+   RENDER STRIP
+═══════════════════════════════════════════ */
+let activeWeek = CUR_WEEK;
+
+function renderStrip(wi) {
+  activeWeek = wi;
+  const days = WEEKS[wi];
+  const sel  = selDi[wi];
+  document.getElementById('weekGrid').innerHTML = days.map((dt, di) => {
+    const isToday = dt.toDateString() === TODAY.toDateString();
+    const isSel   = di === sel;
+    const hasDot  = HAS_DOT.has(dt.getDay());
+    return `<div class="day-cell" onclick="tapDay(${wi},${di})">
+      <span class="dc-name">${DAY_NAMES[di]}</span>
+      <div class="dc-circle${isSel ? ' selected' : ''}">
+        <span class="dc-num${isToday && !isSel ? ' is-today' : ''}">${dt.getDate()}</span>
+      </div>
+      <span class="dc-dot${hasDot ? '' : ' hidden'}"></span>
+    </div>`;
+  }).join('');
+}
+
+function tapDay(wi, di) {
+  selDi[wi] = di;
+  renderStrip(wi);
+  const el = document.getElementById(`dr-${wi}-${di}`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ═══════════════════════════════════════════
+   BUILD SCHEDULE
+═══════════════════════════════════════════ */
+function buildSchedule() {
+  let html = '';
+  WEEKS.forEach((days, wi) => {
+    html += `<div class="week-section" id="ws-${wi}" data-wi="${wi}">`;
+    days.forEach((dt, di) => {
+      const jsDay   = dt.getDay();
+      const classes = WEEKLY[jsDay] || [];
+      const isToday = dt.toDateString() === TODAY.toDateString();
+      html += `<div class="day-row" id="dr-${wi}-${di}" data-wi="${wi}" data-di="${di}">`;
+      html += `<div class="day-label">
+        <div class="dl-num${isToday ? ' today' : ''}">${dt.getDate()}</div>
+        <div class="dl-abbr${isToday ? ' today' : ''}">${DAY_NAMES[di]}</div>
+      </div>`;
+      if (classes.length === 0) {
+        html += `<div class="day-empty-line"></div>`;
+      } else {
+        html += `<div class="day-cards">` +
+          classes.map(c => `<div class="class-card">
+            <div class="cc-time">${c.time}</div>
+            <div class="cc-course">${c.course}</div>
+            <div class="cc-teacher">${c.teacher}</div>
+            <div class="cc-location">${c.location}</div>
+          </div>`).join('') + `</div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById('scheduleContainer').innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   SCROLL OBSERVER
+═══════════════════════════════════════════ */
+let hasScrolled = false;
+
+function initObserver() {
+  // Solo activar tras un pequeño delay para ignorar fires iniciales del observer
+  setTimeout(() => {
+    window.addEventListener('scroll', () => { hasScrolled = true; }, { passive: true, once: true });
+    hasScrolled = false; // asegurar estado limpio
+  }, 100);
+
+  /* Semana visible → actualiza strip completo */
+  const wkObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const wi = +e.target.dataset.wi;
+        if (hasScrolled && wi !== activeWeek) renderStrip(wi);
+      }
+    });
+  }, { rootMargin: '-130px 0px -50% 0px', threshold: 0 });
+  document.querySelectorAll('.week-section').forEach(el => wkObs.observe(el));
+
+  /* Día visible → actualiza círculo seleccionado */
+  const dayObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && hasScrolled) {
+        const wi = +e.target.dataset.wi;
+        const di = +e.target.dataset.di;
+        const dt = WEEKS[wi]?.[di];
+        if (dt && WEEKLY[dt.getDay()]?.length > 0) {
+          selDi[wi] = di;
+          if (wi === activeWeek) renderStrip(wi);
+        }
+      }
+    });
+  }, { rootMargin: '-132px 0px -46% 0px', threshold: 0 });
+  document.querySelectorAll('.day-row').forEach(el => dayObs.observe(el));
+}
+
+/* ═══════════════════════════════════════════
+   CALENDARIO OVERLAY
+═══════════════════════════════════════════ */
+function buildCalendar() {
+  // Generar desde 3 meses antes hasta 8 meses después
+  const months = [];
+  for (let m = -3; m <= 8; m++) {
+    const d = new Date(TODAY.getFullYear(), TODAY.getMonth() + m, 1);
+    months.push(d);
+  }
+
+  let html = '';
+  months.forEach(monthDate => {
+    const year  = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const title = `${MONTH_NAMES[month]} ${year}`;
+
+    // Primer día del mes y del grid (domingo anterior o el mismo)
+    const firstDay  = new Date(year, month, 1);
+    const lastDay   = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(1 - firstDay.getDay()); // retrocede al domingo
+    const endDate = new Date(lastDay);
+    if (lastDay.getDay() < 6) {
+      endDate.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+    }
+
+    html += `<div class="cal-month">`;
+    html += `<div class="cal-month-title">${title}</div>`;
+    html += `<div class="cal-weeknames">` +
+      DAY_NAMES.map(n => `<div class="cal-wname">${n}</div>`).join('') +
+    `</div>`;
+    html += `<div class="cal-days">`;
+
+    const cur = new Date(startDate);
+    while (cur <= endDate) {
+      const dt       = new Date(cur);
+      const isOut    = dt.getMonth() !== month;
+      const isToday  = dt.toDateString() === TODAY.toDateString();
+      const isSel    = dt.toDateString() === calSelected.toDateString();
+      const jsDay    = dt.getDay();
+      const hasDot   = HAS_DOT.has(jsDay);
+      const dateStr  = `${dt.getFullYear()},${dt.getMonth()},${dt.getDate()}`;
+
+      let numClass = 'cal-day-num';
+      if (isOut)                    numClass += ' cal-outside';
+      else if (isToday && !isSel)  numClass += ' cal-today-text';
+
+      html += `<div class="cal-day" onclick="calTapDay(${dateStr})">
+        <div class="cal-day-circle${isSel ? ' cal-selected' : ''}">
+          <span class="${numClass}">${dt.getDate()}</span>
+        </div>
+        <span class="cal-dot${hasDot ? (isOut ? ' cal-outside-dot' : '') : ' hidden'}"></span>
+      </div>`;
+
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    html += `</div></div>`; // .cal-days .cal-month
+  });
+
+  document.getElementById('calContent').innerHTML = html;
+}
+
+function openCalendar() {
+  buildCalendar();
+  document.getElementById('calOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Scroll al mes actual en el calendario
+  setTimeout(() => {
+    const overlay = document.getElementById('calOverlay');
+    // Encuentra el día seleccionado y haz scroll a su mes
+    const cells = overlay.querySelectorAll('.cal-day');
+    for (const cell of cells) {
+      if (cell.querySelector('.cal-selected')) {
+        cell.scrollIntoView({ block: 'center' });
+        break;
+      }
+    }
+  }, 50);
+}
+
+function closeCalendar() {
+  document.getElementById('calOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function calTapDay(y, m, d) {
+  calSelected = new Date(y, m, d);
+  closeCalendar();
+
+  // Encontrar esa fecha en el schedule y hacer scroll
+  let found = false;
+  WEEKS.forEach((days, wi) => {
+    days.forEach((dt, di) => {
+      if (!found && dt.toDateString() === calSelected.toDateString()) {
+        found = true;
+        selDi[wi] = di;
+        renderStrip(wi);
+        setTimeout(() => {
+          const el = document.getElementById(`dr-${wi}-${di}`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 320); // esperar que cierre el overlay
+      }
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PILL GESTURE (tap o swipe-down → abre calendario)
+═══════════════════════════════════════════ */
+function initPillGesture() {
+  const pill = document.getElementById('weekPill');
+  let startY = 0, startTime = 0;
+
+  pill.addEventListener('click', openCalendar);
+
+  pill.addEventListener('touchstart', e => {
+    startY    = e.touches[0].clientY;
+    startTime = Date.now();
+  }, { passive: true });
+
+  pill.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    const dt = Date.now() - startTime;
+    if (dy > 15 && dt < 400) openCalendar();
+  }, { passive: true });
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+buildSchedule();
+renderStrip(CUR_WEEK);
+initPillGesture();
+
+// Scroll directo al día de hoy y fijar el strip en today
+const todayDi = WEEKS[CUR_WEEK]?.findIndex(dt => dt.toDateString() === TODAY.toDateString());
+
+requestAnimationFrame(() => {
+  const target = document.getElementById(`dr-${CUR_WEEK}-${todayDi !== -1 ? todayDi : 0}`);
+  if (target) {
+    target.scrollIntoView({ behavior: 'instant', block: 'start' });
+    window.scrollBy(0, -4);
+  }
+  // Relockear strip en hoy DESPUÉS del scroll inicial,
+  // evitando que semanas antiguas sobreescriban el círculo
+  setTimeout(() => {
+    activeWeek = CUR_WEEK;
+    if (todayDi !== -1) selDi[CUR_WEEK] = todayDi;
+    renderStrip(CUR_WEEK);
+    initObserver();
+  }, 350);
+});
+
+/* ═══════════════════════════════════════════
+   SERVICE WORKER — modo app offline
+═══════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
